@@ -32,11 +32,6 @@ type Order struct {
 	CreatedAt    time.Time
 }
 
-type OrderBook struct {
-	Bids []*Order
-	Asks []*Order
-}
-
 type CreateOrderRequest struct {
 	Side  Side    `json:"side"`
 	Price float64 `json:"price"`

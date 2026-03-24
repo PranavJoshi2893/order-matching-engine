@@ -77,11 +77,17 @@ func (h *OrderHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orderService.Cancel(id); err != nil {
-		log.Println("Internal server error:", err)
-
-		WriteJSON(w, http.StatusInternalServerError, APIResponse{
-			Message: "internal server error",
-		})
+		switch err {
+		case model.ErrorNotFound:
+			WriteJSON(w, http.StatusNotFound, APIResponse{
+				Message: err.Error(),
+			})
+		default:
+			log.Println("Internal server error:", err)
+			WriteJSON(w, http.StatusInternalServerError, APIResponse{
+				Message: "internal server error",
+			})
+		}
 	}
 
 	WriteJSON(w, http.StatusOK, APIResponse{
