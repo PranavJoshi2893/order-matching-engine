@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"sort"
 	"sync"
 	"time"
 
@@ -9,8 +10,10 @@ import (
 )
 
 type OrderRepository struct {
-	mu     sync.RWMutex
-	orders map[uuid.UUID]*model.Order
+	mu         sync.RWMutex
+	orders     map[uuid.UUID]*model.Order
+	sortedBuy  []*model.Order
+	sortedSell []*model.Order
 }
 
 func NewOrderRepo() *OrderRepository {
@@ -34,7 +37,7 @@ func (r *OrderRepository) AddOrder(id uuid.UUID, data *model.CreateOrderRequest)
 	}
 
 	r.orders[id] = order
-
+	r.rebuildSorted()
 	return nil
 }
 
@@ -47,6 +50,36 @@ func (r *OrderRepository) CancelOrder(id uuid.UUID) error {
 	}
 
 	delete(r.orders, id)
-
+	r.rebuildSorted()
 	return nil
+}
+
+func (r *OrderRepository) rebuildSorted() {
+	buy := make([]*model.Order, 0)
+	sell := make([]*model.Order, 0)
+
+	for _, o := range r.orders {
+		if o.Side == model.Buy {
+			buy = append(buy, o)
+		} else {
+			sell = append(sell, o)
+		}
+	}
+
+	sort.Slice(buy, func(i, j int) bool {
+		if buy[i].Price != buy[j].Price {
+			return buy[i].Price > buy[j].Price
+		}
+		return buy[i].CreatedAt.Before(buy[j].CreatedAt)
+	})
+
+	sort.Slice(sell, func(i, j int) bool {
+		if sell[i].Price != sell[j].Price {
+			return sell[i].Price < sell[j].Price
+		}
+		return sell[i].CreatedAt.Before(sell[j].CreatedAt)
+	})
+
+	r.sortedBuy = buy
+	r.sortedSell = sell
 }
